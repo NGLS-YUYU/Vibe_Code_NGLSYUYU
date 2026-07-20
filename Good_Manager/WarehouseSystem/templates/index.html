@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 — 仓库管理系统{% endblock %}
+{% block page_title %}仪表盘{% endblock %}
+
+{% block content %}
+<h4 class="mb-3 fw-bold"><i class="bi bi-speedometer2 me-2 text-primary"></i>库存总览</h4>
+
+<!-- 统计卡片 -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small">商品种类</div>
+                    <div class="fs-3 fw-bold">{{ total_products }}</div>
+                </div>
+                <div class="icon-circle bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-grid"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small">库存总量</div>
+                    <div class="fs-3 fw-bold">{{ total_stock }}</div>
+                </div>
+                <div class="icon-circle bg-info bg-opacity-10 text-info">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small">今日入库</div>
+                    <div class="fs-3 fw-bold text-success">{{ today_inbound }}</div>
+                </div>
+                <div class="icon-circle bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-arrow-down-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small">今日出库</div>
+                    <div class="fs-3 fw-bold text-danger">{{ today_outbound }}</div>
+                </div>
+                <div class="icon-circle bg-danger bg-opacity-10 text-danger">
+                    <i class="bi bi-arrow-up-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 低库存预警 -->
+{% if low_stock > 0 %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <strong>{{ low_stock }}</strong> 种商品库存低于安全线，请及时补货！
+</div>
+{% else %}
+<div class="alert alert-success d-flex align-items-center gap-2 mb-3" role="alert">
+    <i class="bi bi-check-circle-fill fs-5"></i>
+    所有商品库存正常
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <!-- 低库存明细 -->
+    {% if low_stock_items %}
+    <div class="col-lg-6">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-bold">⚠️ 低库存预警（Top 10）</div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>商品名称</th><th>编码</th><th>当前库存</th><th>安全下限</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in low_stock_items %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td class="text-muted small">{{ item.sku }}</td>
+                            <td><span class="badge bg-warning text-dark">{{ item.quantity }}</span></td>
+                            <td>{{ item.min_stock }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 最近入库 -->
+    <div class="col-lg-{% if low_stock_items %}6{% else %}6{% endif %}">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-bold">
+                <i class="bi bi-arrow-down-circle text-success me-1"></i>最近入库
+            </div>
+            <div class="card-body p-0">
+                {% if recent_inbound %}
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>商品</th><th>数量</th><th>供应商</th><th>操作人</th><th>时间</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for r in recent_inbound %}
+                        <tr>
+                            <td>{{ r.name }}</td>
+                            <td class="text-success fw-bold">+{{ r.quantity }}</td>
+                            <td>{{ r.supplier }}</td>
+                            <td>{{ r.operator }}</td>
+                            <td class="text-muted small">{{ r.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center text-muted py-4">暂无入库记录</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近出库 -->
+    <div class="col-lg-6">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-bold">
+                <i class="bi bi-arrow-up-circle text-danger me-1"></i>最近出库
+            </div>
+            <div class="card-body p-0">
+                {% if recent_outbound %}
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>商品</th><th>数量</th><th>领用人</th><th>操作人</th><th>时间</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for r in recent_outbound %}
+                        <tr>
+                            <td>{{ r.name }}</td>
+                            <td class="text-danger fw-bold">-{{ r.quantity }}</td>
+                            <td>{{ r.recipient }}</td>
+                            <td>{{ r.operator }}</td>
+                            <td class="text-muted small">{{ r.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center text-muted py-4">暂无出库记录</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

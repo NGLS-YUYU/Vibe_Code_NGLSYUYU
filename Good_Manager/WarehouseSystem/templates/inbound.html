@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}入库操作 — 仓库管理系统{% endblock %}
+{% block page_title %}入库操作{% endblock %}
+
+{% block content %}
+<h4 class="mb-3 fw-bold"><i class="bi bi-arrow-down-circle me-2 text-success"></i>商品入库</h4>
+
+<div class="row g-3">
+    <!-- 入库表单 -->
+    <div class="col-lg-5">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-bold">📥 入库登记</div>
+            <div class="card-body">
+                <form method="POST" id="inbound-form">
+                    <div class="mb-3">
+                        <label class="form-label">选择商品 <span class="text-danger">*</span></label>
+                        <select name="product_id" class="form-select" required>
+                            <option value="">-- 请选择商品 --</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}">
+                                {{ p.name }}（{{ p.sku }}） — 当前库存：{{ p.quantity }} {{ p.unit }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">入库数量 <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" class="form-control"
+                               min="1" required placeholder="请输入入库数量" autocomplete="off">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">供应商</label>
+                        <input type="text" name="supplier" class="form-control"
+                               placeholder="供应商名称（可选）" autocomplete="off">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">操作人</label>
+                        <input type="text" name="operator" class="form-control"
+                               placeholder="操作人姓名（可选）" autocomplete="off">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea name="remark" class="form-control" rows="2"
+                                  placeholder="备注信息（可选）"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-lg"></i> 确认入库
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if current_user.role == 'admin' %}
+        <!-- 快速新增商品 -->
+        <div class="card stat-card mt-3">
+            <div class="card-header bg-white fw-bold">➕ 快速新增商品</div>
+            <div class="card-body">
+                <form id="add-product-form">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="text" name="name" class="form-control form-control-sm"
+                                   placeholder="商品名称 *" required>
+                        </div>
+                        <div class="col-6">
+                            <input type="text" name="sku" class="form-control form-control-sm"
+                                   placeholder="商品编码 *" required>
+                        </div>
+                        <div class="col-6">
+                            <input type="text" name="category" class="form-control form-control-sm"
+                                   placeholder="分类（可选）">
+                        </div>
+                        <div class="col-4">
+                            <input type="text" name="unit" class="form-control form-control-sm"
+                                   placeholder="单位" value="件">
+                        </div>
+                        <div class="col-2">
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div id="add-product-msg" class="mt-2 small"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 商品列表 -->
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">📦 商品列表</span>
+                <span class="badge bg-secondary">{{ products|length }} 种</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>编码</th>
+                            <th>名称</th>
+                            <th>当前库存</th>
+                            <th>单位</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in products %}
+                        <tr class="product-row" data-id="{{ p.id }}"
+                            style="cursor:pointer"
+                            title="点击选中此商品">
+                            <td class="text-muted small">{{ p.sku }}</td>
+                            <td>{{ p.name }}</td>
+                            <td><span class="badge bg-{% if p.quantity == 0 %}danger{% else %}primary{% endif %}">
+                                {{ p.quantity }}</span>
+                            </td>
+                            <td>{{ p.unit }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted py-4">
+                            暂无商品，请先新增商品
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// 点击商品行 → 自动选中下拉框
+document.querySelectorAll('.product-row').forEach(row => {
+    row.addEventListener('click', () => {
+        const id = row.dataset.id;
+        document.querySelector('select[name="product_id"]').value = id;
+    });
+});
+
+{% if current_user.role == 'admin' %}
+// AJAX 新增商品
+document.getElementById('add-product-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+    const resp = await fetch('/api/product', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    const msg = document.getElementById('add-product-msg');
+    msg.innerHTML = result.ok
+        ? `<span class="text-success"><i class="bi bi-check-circle"></i> ${result.msg} — 刷新页面生效</span>`
+        : `<span class="text-danger"><i class="bi bi-x-circle"></i> ${result.msg}</span>`;
+    if (result.ok) e.target.reset();
+});
+{% endif %}
+</script>
+{% endblock %}

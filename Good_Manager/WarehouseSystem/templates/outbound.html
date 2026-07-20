@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}出库操作 — 仓库管理系统{% endblock %}
+{% block page_title %}出库操作{% endblock %}
+
+{% block content %}
+<h4 class="mb-3 fw-bold"><i class="bi bi-arrow-up-circle me-2 text-danger"></i>商品出库</h4>
+
+<div class="row g-3">
+    <!-- 出库表单 -->
+    <div class="col-lg-5">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-bold">📤 出库登记</div>
+            <div class="card-body">
+                <form method="POST" id="outbound-form">
+                    <div class="mb-3">
+                        <label class="form-label">选择商品 <span class="text-danger">*</span></label>
+                        <select name="product_id" class="form-select" required
+                                onchange="updateStockHint()">
+                            <option value="">-- 请选择商品 --</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}" data-stock="{{ p.quantity }}" data-unit="{{ p.unit }}">
+                                {{ p.name }}（{{ p.sku }}） — 当前库存：{{ p.quantity }} {{ p.unit }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">出库数量 <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" id="quantity-input"
+                               class="form-control" min="1" required
+                               placeholder="请输入出库数量" autocomplete="off">
+                        <div class="form-text" id="stock-hint"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">领用人 / 客户</label>
+                        <input type="text" name="recipient" class="form-control"
+                               placeholder="领用部门或客户名称（可选）" autocomplete="off">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">操作人</label>
+                        <input type="text" name="operator" class="form-control"
+                               placeholder="操作人姓名（可选）" autocomplete="off">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea name="remark" class="form-control" rows="2"
+                                  placeholder="出库原因或备注（可选）"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-check-lg"></i> 确认出库
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品列表 -->
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">📦 商品列表</span>
+                <span class="badge bg-secondary">{{ products|length }} 种</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>编码</th>
+                            <th>名称</th>
+                            <th>当前库存</th>
+                            <th>单位</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in products %}
+                        <tr class="product-row {% if p.quantity == 0 %}table-danger{% endif %}"
+                            data-id="{{ p.id }}" style="cursor:pointer"
+                            title="点击选中此商品">
+                            <td class="text-muted small">{{ p.sku }}</td>
+                            <td>{{ p.name }}</td>
+                            <td>
+                                <span class="badge bg-{% if p.quantity == 0 %}danger{% elif p.quantity < 5 %}warning text-dark{% else %}primary{% endif %}">
+                                    {{ p.quantity }}
+                                </span>
+                            </td>
+                            <td>{{ p.unit }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted py-4">
+                            暂无商品
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// 点击商品行 → 自动选中下拉框
+document.querySelectorAll('.product-row').forEach(row => {
+    row.addEventListener('click', () => {
+        document.querySelector('select[name="product_id"]').value = row.dataset.id;
+        updateStockHint();
+    });
+});
+
+// 显示库存提示
+function updateStockHint() {
+    const sel = document.querySelector('select[name="product_id"]');
+    const opt = sel.selectedOptions[0];
+    const hint = document.getElementById('stock-hint');
+    if (opt && opt.dataset.stock) {
+        const stock = parseInt(opt.dataset.stock);
+        const unit = opt.dataset.unit || '件';
+        hint.textContent = `可用库存：${stock} ${unit}`;
+        hint.className = stock === 0 ? 'form-text text-danger' : 'form-text text-success';
+
+        // 设置数量输入框最大值
+        const qtyInput = document.getElementById('quantity-input');
+        qtyInput.max = stock;
+        if (stock === 0) qtyInput.placeholder = '库存为 0，无法出库';
+    } else {
+        hint.textContent = '';
+    }
+}
+</script>
+{% endblock %}

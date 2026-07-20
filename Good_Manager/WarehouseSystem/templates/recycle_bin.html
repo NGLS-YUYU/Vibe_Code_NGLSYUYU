@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}回收站 — 仓库管理系统{% endblock %}
+{% block page_title %}回收站{% endblock %}
+
+{% block content %}
+<h4 class="mb-3 fw-bold"><i class="bi bi-trash3 me-2 text-warning"></i>回收站</h4>
+
+<!-- 30天提示 -->
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+    <i class="bi bi-info-circle-fill fs-5"></i>
+    <span>已删除记录保留 <strong>30 天</strong>，超时将自动物理清理（不可恢复）。如需立即清理，请使用「永久删除」。</span>
+</div>
+
+<!-- ── 已删除的商品 ── -->
+<div class="card stat-card mb-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-box-seam text-primary me-1"></i>已删除的商品</span>
+        <span class="badge bg-secondary">{{ deleted_products|length }} 条</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>商品名称</th>
+                    <th>编码/规格</th>
+                    <th>单位</th>
+                    <th>删除时间</th>
+                    {% if current_user.role == 'admin' %}
+                    <th class="text-center">操作</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in deleted_products %}
+                <tr id="deleted-product-{{ p.id }}">
+                    <td class="text-muted small">{{ loop.index }}</td>
+                    <td><strong>{{ p.name }}</strong></td>
+                    <td class="text-muted small">{{ p.sku }}</td>
+                    <td>{{ p.unit }}</td>
+                    <td class="text-muted small">{{ p.deleted_at }}</td>
+                    {% if current_user.role == 'admin' %}
+                    <td class="text-center">
+                        <button class="btn btn-outline-success btn-sm restore-product-btn me-1"
+                                data-id="{{ p.id }}" title="恢复此商品">
+                            <i class="bi bi-arrow-counterclockwise"></i> 恢复
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm permanent-delete-product-btn"
+                                data-id="{{ p.id }}" data-name="{{ p.name }}"
+                                title="永久删除（不可恢复）">
+                            <i class="bi bi-trash3-fill"></i> 永久删除
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{% if current_user.role == 'admin' %}6{% else %}5{% endif %}" class="text-center text-muted py-4">
+                    暂无已删除的商品
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── 已删除的入库记录 ── -->
+<div class="card stat-card mb-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-arrow-down-circle text-success me-1"></i>已删除的入库记录</span>
+        <span class="badge bg-secondary">{{ deleted_inbound|length }} 条</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>商品名称</th>
+                    <th>编码</th>
+                    <th class="text-end">数量</th>
+                    <th>单位</th>
+                    <th>供应商</th>
+                    <th>入库时间</th>
+                    <th>删除时间</th>
+                    {% if current_user.role == 'admin' %}
+                    <th class="text-center">操作</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in deleted_inbound %}
+                <tr id="deleted-inbound-{{ r.id }}">
+                    <td class="text-muted small">{{ loop.index }}</td>
+                    <td><strong>{{ r.name }}</strong></td>
+                    <td class="text-muted small">{{ r.sku }}</td>
+                    <td class="text-end text-success fw-bold">+{{ r.quantity }}</td>
+                    <td>{{ r.unit }}</td>
+                    <td>{{ r.supplier or '-' }}</td>
+                    <td class="text-muted small">{{ r.created_at }}</td>
+                    <td class="text-muted small">{{ r.deleted_at }}</td>
+                    {% if current_user.role == 'admin' %}
+                    <td class="text-center">
+                        <button class="btn btn-outline-success btn-sm restore-btn me-1"
+                                data-type="inbound" data-id="{{ r.id }}" title="恢复此记录">
+                            <i class="bi bi-arrow-counterclockwise"></i> 恢复
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm permanent-delete-btn"
+                                data-type="inbound" data-id="{{ r.id }}"
+                                title="永久删除（不可恢复）">
+                            <i class="bi bi-trash3-fill"></i> 永久删除
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{% if current_user.role == 'admin' %}9{% else %}8{% endif %}" class="text-center text-muted py-4">
+                    暂无已删除的入库记录
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── 已删除的出库记录 ── -->
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-arrow-up-circle text-danger me-1"></i>已删除的出库记录</span>
+        <span class="badge bg-secondary">{{ deleted_outbound|length }} 条</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>商品名称</th>
+                    <th>编码</th>
+                    <th class="text-end">数量</th>
+                    <th>单位</th>
+                    <th>领用人/客户</th>
+                    <th>出库时间</th>
+                    <th>删除时间</th>
+                    {% if current_user.role == 'admin' %}
+                    <th class="text-center">操作</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in deleted_outbound %}
+                <tr id="deleted-outbound-{{ r.id }}">
+                    <td class="text-muted small">{{ loop.index }}</td>
+                    <td><strong>{{ r.name }}</strong></td>
+                    <td class="text-muted small">{{ r.sku }}</td>
+                    <td class="text-end text-danger fw-bold">-{{ r.quantity }}</td>
+                    <td>{{ r.unit }}</td>
+                    <td>{{ r.recipient or '-' }}</td>
+                    <td class="text-muted small">{{ r.created_at }}</td>
+                    <td class="text-muted small">{{ r.deleted_at }}</td>
+                    {% if current_user.role == 'admin' %}
+                    <td class="text-center">
+                        <button class="btn btn-outline-success btn-sm restore-btn me-1"
+                                data-type="outbound" data-id="{{ r.id }}" title="恢复此记录">
+                            <i class="bi bi-arrow-counterclockwise"></i> 恢复
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm permanent-delete-btn"
+                                data-type="outbound" data-id="{{ r.id }}"
+                                title="永久删除（不可恢复）">
+                            <i class="bi bi-trash3-fill"></i> 永久删除
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{% if current_user.role == 'admin' %}9{% else %}8{% endif %}" class="text-center text-muted py-4">
+                    暂无已删除的出库记录
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if current_user.role == 'admin' %}
+<script>
+// ── 恢复：出入库记录 ──
+document.querySelectorAll('.restore-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const type = btn.dataset.type;
+        const id = btn.dataset.id;
+        if (!confirm(`确定要恢复这条${type === 'inbound' ? '入库' : '出库'}记录吗？\n\n数据将重新出现在主列表中。`)) return;
+        const resp = await fetch(`/api/record/${type}/${id}/restore`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.ok) { location.reload(); } else { alert('恢复失败：' + result.msg); }
+    });
+});
+
+// ── 恢复：商品 ──
+document.querySelectorAll('.restore-product-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        if (!confirm('确定要恢复这个商品吗？\n\n商品将重新出现在商品管理列表中。')) return;
+        const resp = await fetch(`/api/product/${id}/restore`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.ok) { location.reload(); } else { alert('恢复失败：' + result.msg); }
+    });
+});
+
+// ── 永久删除：出入库记录 ──
+document.querySelectorAll('.permanent-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const type = btn.dataset.type;
+        const id = btn.dataset.id;
+        if (!confirm(`⚠️ 此操作不可恢复，确定永久删除吗？\n\n该${type === 'inbound' ? '入库' : '出库'}记录将被彻底从数据库中移除。`)) return;
+        const resp = await fetch(`/api/record/${type}/${id}/permanent_delete`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.ok) { location.reload(); } else { alert('删除失败：' + result.msg); }
+    });
+});
+
+// ── 永久删除：商品 ──
+document.querySelectorAll('.permanent-delete-product-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        if (!confirm(`⚠️ 此操作不可恢复，确定永久删除商品「${name}」吗？\n\n关联的出入库历史记录将保留，但商品信息将无法显示。`)) return;
+        const resp = await fetch(`/api/product/${id}/permanent_delete`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.ok) { location.reload(); } else { alert('删除失败：' + result.msg); }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

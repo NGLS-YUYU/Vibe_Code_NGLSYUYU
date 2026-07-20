@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}每日入库明细 — 仓库管理系统{% endblock %}
+{% block page_title %}每日入库明细{% endblock %}
+
+{% block content %}
+<h4 class="mb-3 fw-bold"><i class="bi bi-journal-plus me-2 text-success"></i>每日入库明细</h4>
+
+<!-- 日期选择 -->
+<div class="card stat-card mb-3">
+    <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">查询日期</label>
+                <input type="date" name="date" class="form-control"
+                       value="{{ query_date }}" max="{{ today_date }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> 查询
+                </button>
+                <a href="{{ url_for('daily_inbound') }}" class="btn btn-outline-secondary">
+                    今天
+                </a>
+            </div>
+            <div class="col-md-6 text-end">
+                {% if total_records > 0 %}
+                <span class="text-muted small">
+                    共 <strong>{{ total_records }}</strong> 条记录，
+                    合计入库 <strong class="text-success">{{ total_quantity }}</strong> 件
+                </span>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 明细表格 -->
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold">📥 {{ query_date }} 入库明细</span>
+        <span class="badge bg-secondary">{{ records|length }} 条</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>商品名称</th>
+                    <th>编码</th>
+                    <th class="text-end">数量</th>
+                    <th>单位</th>
+                    <th>供应商</th>
+                    <th>操作人</th>
+                    <th>备注</th>
+                    <th>入库时间</th>
+                    {% if current_user.role == 'admin' %}
+                    <th class="text-center">操作</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr id="inbound-row-{{ r.id }}">
+                    <td class="text-muted small">{{ loop.index }}</td>
+                    <td><strong>{{ r.name }}</strong></td>
+                    <td class="text-muted small">{{ r.sku }}</td>
+                    <td class="text-end text-success fw-bold">+{{ r.quantity }}</td>
+                    <td>{{ r.unit }}</td>
+                    <td>{{ r.supplier or '-' }}</td>
+                    <td>{{ r.operator or '-' }}</td>
+                    <td class="text-muted small">{{ r.remark or '-' }}</td>
+                    <td class="text-muted small">{{ r.created_at }}</td>
+                    {% if current_user.role == 'admin' %}
+                    <td class="text-center">
+                        <button class="btn btn-outline-danger btn-sm delete-btn"
+                                data-type="inbound" data-id="{{ r.id }}"
+                                title="移入回收站">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{% if current_user.role == 'admin' %}10{% else %}9{% endif %}" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                    {{ query_date }} 暂无入库记录
+                </td></tr>
+                {% endfor %}
+            </tbody>
+            {% if records %}
+            <tfoot class="table-light">
+                <tr>
+                    <td colspan="3" class="fw-bold">合计</td>
+                    <td class="text-end text-success fw-bold">{{ total_quantity }}</td>
+                    <td colspan="{% if current_user.role == 'admin' %}6{% else %}5{% endif %}"></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if current_user.role == 'admin' %}
+<script>
+// 删除按钮 — 二次确认 + AJAX 软删除
+document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const type = btn.dataset.type;
+        const id = btn.dataset.id;
+        if (!confirm(`确定要删除这条${type === 'inbound' ? '入库' : '出库'}记录吗？\n\n数据将移入回收站，30天内可恢复。`)) return;
+        const resp = await fetch(`/api/record/${type}/${id}/delete`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.ok) {
+            location.reload();
+        } else {
+            alert('删除失败：' + result.msg);
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

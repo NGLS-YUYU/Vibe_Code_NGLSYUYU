@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}仓库管理系统{% endblock %}</title>
+    <!-- Bootstrap 5 + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 220px;
+        }
+        body {
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+        /* ── 左侧导航（桌面端固定） ── */
+        .sidebar {
+            position: fixed; top: 0; left: 0; bottom: 0;
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #1a1f36 0%, #252d4a 100%);
+            color: #b0bec5;
+            padding: 0;
+            z-index: 1000;
+            overflow-y: auto;
+            transition: transform .25s ease;
+        }
+        .sidebar .logo {
+            padding: 20px 16px;
+            font-size: 1.15rem; font-weight: 700;
+            color: #fff; letter-spacing: .5px;
+            border-bottom: 1px solid rgba(255,255,255,.06);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .sidebar .logo i { font-size: 1.5rem; color: #4fc3f7; }
+        .sidebar .nav-item { list-style: none; }
+        .sidebar .nav-link {
+            display: flex; align-items: center; gap: 10px;
+            padding: 11px 20px; color: #8a99a8; text-decoration: none;
+            font-size: .9rem; border-left: 3px solid transparent;
+            transition: all .15s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff; background: rgba(255,255,255,.05);
+            border-left-color: #4fc3f7;
+        }
+        .sidebar .nav-link i { font-size: 1.1rem; width: 20px; text-align: center; }
+        .sidebar .export-link {
+            color: #ffd54f !important; font-weight: 600;
+        }
+        .sidebar .nav-section {
+            padding: 12px 20px 4px; font-size: .7rem;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: #546e7a;
+        }
+        /* ── 右侧主区域 ── */
+        .main-area {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+        }
+        .top-bar {
+            background: #fff; padding: 12px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .content { padding: 24px; }
+        /* ── 卡片 ── */
+        .stat-card {
+            border: none; border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            transition: transform .15s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card .icon-circle {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+        }
+        /* ── 页面标题 ── */
+        .page-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .page-header h4 { font-weight: 700; margin: 0; }
+        /* ── Flash 消息 ── */
+        .flash-area { margin-bottom: 16px; }
+        /* ── 用户信息 ── */
+        .user-info {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .user-info .role-badge {
+            font-size: .75rem; padding: 2px 8px; border-radius: 20px;
+        }
+        .role-badge.admin { background: #e3f2fd; color: #1565c0; }
+        .role-badge.operator { background: #e8f5e9; color: #2e7d32; }
+        .role-badge.guest { background: #f5f5f5; color: #616161; }
+        /* ── 汉堡菜单按钮（仅移动端可见） ── */
+        .hamburger-btn {
+            display: none;
+            background: none; border: none; font-size: 1.6rem;
+            color: #333; cursor: pointer; padding: 0 4px; line-height: 1;
+        }
+        /* ── 侧边栏遮罩（仅移动端） ── */
+        .sidebar-backdrop {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,.45); z-index: 999;
+        }
+        /* ── 表格横向滚动（通用） ── */
+        .table-responsive { -webkit-overflow-scrolling: touch; }
+
+        /* ═══════════════════════════════════════════════════════════ */
+        /* 移动端 & 平板 (≤ 768px)                                   */
+        /* ═══════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            .hamburger-btn { display: inline-block; }
+            .sidebar {
+                transform: translateX(-100%);
+                box-shadow: 4px 0 20px rgba(0,0,0,.3);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-backdrop.show { display: block; }
+            .main-area {
+                margin-left: 0 !important;
+            }
+            .top-bar {
+                padding: 10px 14px;
+            }
+            .content {
+                padding: 14px;
+            }
+            .user-info {
+                gap: 4px;
+                font-size: .82rem;
+            }
+            .user-info strong {
+                max-width: 60px; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap;
+            }
+            .user-info .role-badge {
+                font-size: .68rem; padding: 1px 6px;
+            }
+            /* 退出按钮在移动端保留显示 */
+            .logout-link .logout-text { display: none; }
+            .logout-link i { font-size: 1.1rem; }
+            .pipe-sep { display: none; }
+            .user-info a small { font-size: .72rem; }
+            .page-header {
+                flex-direction: column; align-items: flex-start; gap: 8px;
+            }
+            .stat-card .card-header {
+                flex-wrap: wrap; gap: 6px;
+            }
+            /* 表格外层容器已在各页面用 .table-responsive，此处补充强制 */
+            table {
+                font-size: .85rem;
+            }
+            table th, table td {
+                white-space: nowrap;
+            }
+        }
+
+        /* 平板 (769px - 1024px)：侧边栏保留但收窄 */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            :root { --sidebar-width: 180px; }
+            .sidebar .nav-link { font-size: .82rem; padding: 10px 14px; }
+            .sidebar .logo { font-size: 1rem; }
+            .content { padding: 18px; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- 侧边栏遮罩（移动端） -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<!-- 左侧导航 -->
+<nav class="sidebar" id="sidebar">
+    <div class="logo">
+        <img src="/static/icon.png" alt="icon" style="width:24px;height:24px;"> 仓库管理
+    </div>
+    <ul class="nav flex-column mt-2">
+        <li class="nav-section">总览</li>
+        <li class="nav-item">
+            <a href="{{ url_for('index') }}" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                <i class="bi bi-speedometer2"></i> 仪表盘
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ url_for('stock') }}" class="nav-link {% if request.path == '/stock' %}active{% endif %}">
+                <i class="bi bi-boxes"></i> 实时库存
+            </a>
+        </li>
+    </ul>
+
+    {% if current_user.is_authenticated and current_user.role in ('admin', 'operator') %}
+    <ul class="nav flex-column mt-2">
+        <li class="nav-section">管理</li>
+        <li class="nav-item">
+            <a href="{{ url_for('products_page') }}" class="nav-link {% if request.path == '/products' %}active{% endif %}">
+                <i class="bi bi-box-seam text-primary"></i> 📦 商品管理
+            </a>
+        </li>
+    </ul>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.role in ('admin', 'operator') %}
+    <ul class="nav flex-column mt-2">
+        <li class="nav-section">操作</li>
+        <li class="nav-item">
+            <a href="{{ url_for('inbound') }}" class="nav-link {% if request.path == '/inbound' %}active{% endif %}">
+                <i class="bi bi-arrow-down-circle text-success"></i> 入库操作
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ url_for('outbound') }}" class="nav-link {% if request.path == '/outbound' %}active{% endif %}">
+                <i class="bi bi-arrow-up-circle text-danger"></i> 出库操作
+            </a>
+        </li>
+    </ul>
+    {% endif %}
+
+    <ul class="nav flex-column mt-2">
+        <li class="nav-section">报表</li>
+        <li class="nav-item">
+            <a href="{{ url_for('daily_inbound') }}" class="nav-link {% if request.path == '/daily_inbound' %}active{% endif %}">
+                <i class="bi bi-journal-plus"></i> 每日入库明细
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ url_for('daily_outbound') }}" class="nav-link {% if request.path == '/daily_outbound' %}active{% endif %}">
+                <i class="bi bi-journal-minus"></i> 每日出库明细
+            </a>
+        </li>
+    </ul>
+
+    {% if current_user.is_authenticated and current_user.role in ('admin', 'operator') %}
+    <ul class="nav flex-column mt-2">
+        <li class="nav-section">导出</li>
+        <li class="nav-item">
+            <a href="{{ url_for('export_all') }}" class="nav-link export-link">
+                <i class="bi bi-file-earmark-spreadsheet"></i> 📊 导出全部数据
+            </a>
+        </li>
+    </ul>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <ul class="nav flex-column mt-2">
+        <li class="nav-section">工具</li>
+        <li class="nav-item">
+            <a href="{{ url_for('recycle_bin') }}" class="nav-link {% if request.path == '/recycle_bin' %}active{% endif %}">
+                <i class="bi bi-trash3 text-warning"></i> 🗑️ 回收站
+            </a>
+        </li>
+    </ul>
+    {% endif %}
+</nav>
+
+<!-- 主区域 -->
+<div class="main-area">
+    <!-- 顶栏 -->
+    <div class="top-bar">
+        <button class="hamburger-btn" id="hamburgerBtn" title="菜单">&#9776;</button>
+        <span class="text-muted small">{% block page_title %}仓库管理系统{% endblock %}</span>
+        <div class="user-info">
+            {% if current_user.is_authenticated %}
+            <i class="bi bi-person-circle text-muted"></i>
+            <strong>{{ current_user.real_name or current_user.username }}</strong>
+            <span class="role-badge {{ current_user.role }}">
+                {% if current_user.role == 'admin' %}管理员
+                {% elif current_user.role == 'operator' %}操作员
+                {% else %}访客{% endif %}
+            </span>
+            <span class="text-muted pipe-sep">|</span>
+            <a href="{{ url_for('logout') }}" class="text-decoration-none text-muted small logout-link"
+               title="退出登录">
+                <i class="bi bi-box-arrow-right"></i> <span class="logout-text">退出</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 内容 -->
+    <div class="content">
+        <!-- Flash 消息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-area">
+            {% for category, msg in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show mb-2" role="alert">
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── 移动端侧边栏切换 ──
+(function() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const hamburger = document.getElementById('hamburgerBtn');
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        backdrop.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    hamburger.addEventListener('click', openSidebar);
+    backdrop.addEventListener('click', closeSidebar);
+
+    // 点击导航链接后自动关闭侧边栏
+    sidebar.querySelectorAll('.nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) closeSidebar();
+        });
+    });
+})();
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

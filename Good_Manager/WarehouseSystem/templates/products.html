@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}商品管理 — 仓库管理系统{% endblock %}
+{% block page_title %}商品管理{% endblock %}
+
+{% block content %}
+<h4 class="mb-3 fw-bold"><i class="bi bi-box-seam me-2 text-primary"></i>商品管理</h4>
+
+<!-- 商品表格 -->
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold">📦 商品列表</span>
+        <div>
+            <span class="badge bg-secondary me-2">{{ products|length }} 种</span>
+            {% if current_user.role == 'admin' %}
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                <i class="bi bi-plus-lg"></i> 新增商品
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>名称</th>
+                    <th>编码/规格</th>
+                    <th>分类</th>
+                    <th>单位</th>
+                    <th class="text-end">当前库存</th>
+                    <th>库位</th>
+                    <th class="text-end">安全下限</th>
+                    <th>更新时间</th>
+                    {% if current_user.role == 'admin' %}
+                    <th class="text-center">操作</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr id="product-row-{{ p.id }}">
+                    <td class="text-muted small">{{ p.id }}</td>
+                    <td><strong>{{ p.name }}</strong></td>
+                    <td class="text-muted small">{{ p.sku }}</td>
+                    <td>{{ p.category or '-' }}</td>
+                    <td>{{ p.unit }}</td>
+                    <td class="text-end">
+                        <span class="fw-bold {% if p.quantity == 0 %}text-danger{% elif p.quantity <= p.min_stock and p.min_stock > 0 %}text-warning{% endif %}">
+                            {{ p.quantity }}
+                        </span>
+                    </td>
+                    <td>{{ p.location or '-' }}</td>
+                    <td class="text-end">{{ p.min_stock }}</td>
+                    <td class="text-muted small">{{ p.updated_at }}</td>
+                    {% if current_user.role == 'admin' %}
+                    <td class="text-center">
+                        <button class="btn btn-outline-danger btn-sm product-delete-btn"
+                                data-id="{{ p.id }}" data-name="{{ p.name }}"
+                                title="移入回收站">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{% if current_user.role == 'admin' %}10{% else %}9{% endif %}" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                    暂无商品，请点击右上角「新增商品」添加
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if current_user.role == 'admin' %}
+<!-- 新增商品模态框 -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2 text-primary"></i>新增商品</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-product-form">
+                    <div class="mb-3">
+                        <label class="form-label">商品名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required
+                               placeholder="请输入商品名称" autocomplete="off">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">商品编码/规格 <span class="text-danger">*</span></label>
+                        <input type="text" name="sku" class="form-control" required
+                               placeholder="请输入唯一编码或规格" autocomplete="off">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">分类</label>
+                            <input type="text" name="category" class="form-control"
+                                   placeholder="如：电子产品" autocomplete="off">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">单位</label>
+                            <input type="text" name="unit" class="form-control"
+                                   value="件" placeholder="件/箱/kg">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">初始库存</label>
+                            <input type="number" name="quantity" class="form-control"
+                                   value="0" min="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">安全下限</label>
+                            <input type="number" name="min_stock" class="form-control"
+                                   value="0" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">库位</label>
+                        <input type="text" name="location" class="form-control"
+                                   placeholder="如：A-01-03" autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-check-lg"></i> 确认添加
+                    </button>
+                </form>
+                <div id="add-product-msg" class="mt-2 small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+{% if current_user.role == 'admin' %}
+// 新增商品 AJAX
+document.getElementById('add-product-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+    const resp = await fetch('/api/product', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    const msg = document.getElementById('add-product-msg');
+    if (result.ok) {
+        msg.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> ${result.msg}</span>`;
+        setTimeout(() => location.reload(), 800);
+    } else {
+        msg.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> ${result.msg}</span>`;
+    }
+});
+
+// 删除商品 — 二次确认 + AJAX 软删除
+document.querySelectorAll('.product-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        if (!confirm(`确定要删除商品「${name}」吗？\n\n商品将移入回收站，已关联的出入库历史记录不受影响。`)) return;
+        const resp = await fetch(`/api/product/${id}/delete`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.ok) {
+            location.reload();
+        } else {
+            alert('删除失败：' + result.msg);
+        }
+    });
+});
+{% endif %}
+</script>
+{% endblock %}
